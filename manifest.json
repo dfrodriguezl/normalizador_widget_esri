@@ -1,0 +1,22 @@
+{
+  "name": "normalizacion-dane",
+  "label": "Normalización DANE",
+  "type": "widget",
+  "version": "1.17.0",
+  "exbVersion": "1.17.0",
+  "author": "Esri R&D Center Beijing",
+  "description": "Usa la API de normalizacion del DANE para búsqueda de ubicaciones",
+  "copyright": "",
+  "dependency": "jimu-arcgis",
+  "license": "http://www.apache.org/licenses/LICENSE-2.0",
+  "properties": {},
+  "translatedLocales": [
+    "es"
+  ],
+  "defaultSize": {
+    "width": 800,
+    "height": 500
+  }
+}
+
+

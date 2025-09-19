@@ -1,0 +1,113 @@
+.widget-formulario {
+    background-color: #fff;
+    padding: 1rem;
+    font-family: 'Segoe UI', sans-serif;
+    max-width: 600px;
+    width: 100%;
+  
+    p {
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+      color: #333;
+    }
+  
+    .dropdown-container {
+        width: 100%;
+        margin-bottom: 15px;
+    
+        .jimu-dropdown {
+          width: 100%;
+        }
+    
+        .jimu-dropdown-button {
+          width: 100% !important;
+        }
+      }
+    
+    .jimu-input {
+        width: 100%;
+        margin-bottom: 20px;
+
+        input {
+            width: 100%;
+        }
+    }
+  
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      gap: 10px;
+      margin-bottom: 20px;
+  
+      .button-container {
+        flex: 1 1 45%;
+  
+        button {
+          width: 100%;
+          padding: 8px;
+          font-size: 0.95rem;
+          background-color: #36A97A;
+          color: #fff;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          transition: background-color 0.2s ease;
+  
+          &:hover {
+            background-color: #1C7E56;
+          }
+  
+          &:disabled {
+            background-color: #ccc;
+            color: #666;
+            cursor: not-allowed;
+          }
+        }
+      }
+    }
+  
+    .resumen-info {
+      margin-top: 30px;
+      font-size: 0.9rem;
+      color: #444;
+  
+      p {
+        margin: 4px 0;
+      }
+    }
+
+    .advertencia {
+        color: #d32f2f;     
+        font-style: italic;  
+        font-size: 0.80rem;  
+        margin-top: 4px;      
+    }      
+
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+      
+  
+    @media (max-width: 480px) {
+      padding: 15px;
+  
+      .button-row {
+        flex-direction: column;
+  
+        .button-container {
+          flex: 1 1 100%;
+        }
+      }
+    }
+  }
+  
