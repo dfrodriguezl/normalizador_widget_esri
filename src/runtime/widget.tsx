@@ -11,7 +11,9 @@ import Graphic from 'esri/Graphic'
 import Point from 'esri/geometry/Point'
 import PictureMarkerSymbol from 'esri/symbols/PictureMarkerSymbol'
 import { toast, ToastContainer } from "react-toastify";
- 
+import useAPIIA from './hooks/useAPIIA';
+import ResultadoNormalizacionIA from './components/ResultadoNormalizacion';
+
 const Widget = (props: AllWidgetProps<IMConfig>) => {
   const [jimuMapView, setJimuMapView] = useState<JimuMapView>();
   const [departamentos, setDepartamentos] = useState<{ nombre: string, codigo: string }[]>([]);
@@ -25,10 +27,11 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
   const [cargandoMunicipios, setCargandoMunicipios] = useState(false);
   const [direccionInvalida, setDireccionInvalida] = useState<boolean>(false);
   const [errorCapturaDatos, setErrorCapturaDatos] = useState(false);
+  const { fetchNormalizarDireccion, respuestaIA } = useAPIIA();
 
   useEffect(() => {
     if (!jimuMapView) return;
-  
+
     const capaDeptos = jimuMapView.view.map.layers.find((layer) =>
       layer.title.includes('Departamentos')
     ) as FeatureLayer;
@@ -64,7 +67,7 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
       console.log("entroooooo aca");
     }
   }, [jimuMapView]);
-  
+
   useEffect(() => {
     if (!jimuMapView || !departamentoSeleccionado) return;
 
@@ -106,7 +109,7 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
     setDireccionInvalida(valor.length < 10);
   };
 
-  const ejecutarAPI = (tipo: 'normalizar' | 'georeferenciar') => { 
+  const ejecutarAPI = async (tipo: 'normalizar' | 'georeferenciar') => {
     const urlBase = tipo === 'normalizar'
       ? 'https://apinormalizador.dane.gov.co/normalizardireccion'
       : 'https://apinormalizador.dane.gov.co/georeferenciardireccion';
@@ -115,25 +118,28 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
 
     setLoading(true);
 
+    if (tipo === 'normalizar') {
+      try {
+        await fetchNormalizarDireccion(direccion);
+      } catch (error) {
+        toast.error('Error al normalizar dirección: ', error)
+      }
+
+      if (respuestaIA?.direccion_salida) {
+        toast.success('Normalización completa')
+      } else {
+        toast.warning(`Normalización no realizada: ${respuestaIA?.direccion_salida}`)
+      }
+
+      return;
+    }
+
     fetch(url)
       .then(response => response.json())
       .then(data => {
         setRespuestaApi(data);
         jimuMapView.view.graphics.removeAll();
 
-        console.log('respuestaApi: ', {data})
-
-        if (tipo === 'normalizar' && data.dir_normalizada) {
-          const { normalizacion_completa, tipo } = data.dir_normalizada
-
-          if (normalizacion_completa) {
-            toast.success('Normalización completa')
-          } else {
-            toast.warning(`Normalización no realizada: ${tipo}`)
-          }
-
-        }
-  
         if (tipo === 'georeferenciar' && data.georeferenciacion) {
           const { latitud, longitud, tipo } = data.georeferenciacion;
           const { direccion_normalizada } = data.normalizacion;
@@ -146,13 +152,13 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
           }
 
           toast.success(`Georreferenciación: ${tipo}`)
-          
+
           const point = new Point({
             x: longitud,
             y: latitud,
             spatialReference: { wkid: 4326 },
           });
-        
+
           const symbol = new PictureMarkerSymbol({
             url: 'data:image/svg+xml;utf8,' + encodeURIComponent(`
               <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 512 512">
@@ -169,8 +175,8 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
             height: '32px'
           });
 
-          
-        
+
+
           const popupTemplate = {
             title: 'Dirección georreferenciada',
             content: `
@@ -184,15 +190,15 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
             `,
           };
 
-          const graphic = new Graphic({ 
+          const graphic = new Graphic({
             geometry: point,
             symbol: symbol,
             attributes: { latitud, longitud },
             popupTemplate,
           });
-        
+
           jimuMapView.view.graphics.add(graphic);
-          jimuMapView.view.goTo({ target: [longitud, latitud], zoom: 16 });        
+          jimuMapView.view.goTo({ target: [longitud, latitud], zoom: 16 });
         }
       })
       .catch(error => {
@@ -277,6 +283,15 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
             </div>
           </div>
 
+          {/* Resultado normalización IA */}
+          {respuestaIA && (
+            <ResultadoNormalizacionIA
+              respuestaIA={respuestaIA}
+              departamentoSeleccionado={departamentoSeleccionado}
+              municipioSeleccionado={municipioSeleccionado}
+            />
+          )}
+
           {respuestaApi && (
             <div className="respuesta-api">
               {(respuestaApi.dir_normalizada?.direccion_normalizada || respuestaApi.georeferenciacion?.latitud !== '') && (
@@ -308,73 +323,73 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
                   {(respuestaApi.dir_normalizada?.tipo_via_ppal ||
                     respuestaApi.normalizacion?.tipo_via_ppal)
                     && <p><strong>Tipo vía principal:</strong> {
-                    respuestaApi.dir_normalizada?.tipo_via_ppal ||
-                    respuestaApi.normalizacion?.tipo_via_ppal}                    
-                  </p>}
+                      respuestaApi.dir_normalizada?.tipo_via_ppal ||
+                      respuestaApi.normalizacion?.tipo_via_ppal}
+                    </p>}
 
                   {(respuestaApi.dir_normalizada?.numero_via_ppal ||
                     respuestaApi.normalizacion?.numero_via_ppal)
                     && <p><strong>Número vía principal:</strong> {
-                    respuestaApi.dir_normalizada?.numero_via_ppal ||
-                    respuestaApi.normalizacion?.numero_via_ppal}
-                  </p>}
-                  
+                      respuestaApi.dir_normalizada?.numero_via_ppal ||
+                      respuestaApi.normalizacion?.numero_via_ppal}
+                    </p>}
+
                   {(respuestaApi.dir_normalizada?.adicional_via_ppal ||
                     respuestaApi.normalizacion?.adicional_via_ppal)
                     && <p><strong>Letra vía principal:</strong> {
-                    respuestaApi.dir_normalizada?.adicional_via_ppal ||
-                    respuestaApi.normalizacion?.adicional_via_ppal}
-                  </p>}
+                      respuestaApi.dir_normalizada?.adicional_via_ppal ||
+                      respuestaApi.normalizacion?.adicional_via_ppal}
+                    </p>}
 
                   {(respuestaApi.dir_normalizada?.bis_via_ppal ||
                     respuestaApi.normalizacion?.bis_via_ppal)
                     && <p><strong>BIS vía principal:</strong> {
-                    respuestaApi.dir_normalizada?.bis_via_ppal ||
-                    respuestaApi.normalizacion?.bis_via_ppal}
-                  </p>}
+                      respuestaApi.dir_normalizada?.bis_via_ppal ||
+                      respuestaApi.normalizacion?.bis_via_ppal}
+                    </p>}
 
                   {(respuestaApi.dir_normalizada?.cuadrante_via_ppal ||
                     respuestaApi.normalizacion?.cuadrante_via_ppal)
                     && <p><strong>Cuadrante vía principal:</strong> {
-                    respuestaApi.dir_normalizada?.cuadrante_via_ppal ||
-                    respuestaApi.normalizacion?.cuadrante_via_ppal}
-                  </p>}
+                      respuestaApi.dir_normalizada?.cuadrante_via_ppal ||
+                      respuestaApi.normalizacion?.cuadrante_via_ppal}
+                    </p>}
 
                   {(respuestaApi.dir_normalizada?.numero_via_gen ||
                     respuestaApi.normalizacion?.numero_via_gen)
                     && <p><strong>Número vía generadora:</strong> {
-                    respuestaApi.dir_normalizada?.numero_via_gen ||
-                    respuestaApi.normalizacion?.numero_via_gen}
-                  </p>}
+                      respuestaApi.dir_normalizada?.numero_via_gen ||
+                      respuestaApi.normalizacion?.numero_via_gen}
+                    </p>}
 
                   {(respuestaApi.dir_normalizada?.adicional_via_gen ||
                     respuestaApi.normalizacion?.adicional_via_gen)
                     && <p><strong>Letra vía generadora:</strong> {
-                    respuestaApi.dir_normalizada?.adicional_via_gen ||
-                    respuestaApi.normalizacion?.adicional_via_gen}
-                  </p>}
+                      respuestaApi.dir_normalizada?.adicional_via_gen ||
+                      respuestaApi.normalizacion?.adicional_via_gen}
+                    </p>}
 
                   {(respuestaApi.dir_normalizada?.bis_via_gen ||
                     respuestaApi.normalizacion?.bis_via_gen)
                     && <p><strong>BIS vía generadora:</strong> {
-                    respuestaApi.dir_normalizada?.bis_via_gen ||
-                    respuestaApi.normalizacion?.bis_via_gen}
-                  </p>}
+                      respuestaApi.dir_normalizada?.bis_via_gen ||
+                      respuestaApi.normalizacion?.bis_via_gen}
+                    </p>}
 
                   {(respuestaApi.dir_normalizada?.numero_placa ||
                     respuestaApi.normalizacion?.numero_placa)
                     && <p><strong>Número placa:</strong> {
-                    respuestaApi.dir_normalizada?.numero_placa ||
-                    respuestaApi.normalizacion?.numero_placa}
-                  </p>}
+                      respuestaApi.dir_normalizada?.numero_placa ||
+                      respuestaApi.normalizacion?.numero_placa}
+                    </p>}
 
                   {(respuestaApi.dir_normalizada?.cuadrante_via_generadora ||
                     respuestaApi.normalizacion?.cuadrante_via_generadora)
                     && <p><strong>Cuadrante vía generadora:</strong> {
-                    respuestaApi.dir_normalizada?.cuadrante_via_generadora ||
-                    respuestaApi.normalizacion?.cuadrante_via_generadora}
-                  </p>}
-                  
+                      respuestaApi.dir_normalizada?.cuadrante_via_generadora ||
+                      respuestaApi.normalizacion?.cuadrante_via_generadora}
+                    </p>}
+
 
                 </>
               )}
@@ -396,17 +411,17 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
 
 
       <ToastContainer
-          position="top-right"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable={false}
-          pauseOnHover
-          theme="light"
-        />
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable={false}
+        pauseOnHover
+        theme="light"
+      />
 
     </>
   )
