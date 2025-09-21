@@ -131,6 +131,8 @@ const Widget = (props: AllWidgetProps<IMConfig>) => {
         toast.warning(`Normalización no realizada: ${respuestaIA?.direccion_salida}`)
       }
 
+      setLoading(false);
+
       return;
     }
 
